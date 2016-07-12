@@ -1,24 +1,29 @@
 import java.nio.file.*;
 import java.util.*;
+import java.util.regex.*;
 import java.io.*;
+import javax.swing.border.*;
 
 public class SnippetUpdater {
   
-  public static final String USER_DIR = "INSERT DIRECTORY HERE";//specifies directory to update files in (and all sub-directories within)
-  //public static final String FILE_FILTER = "*.{html}";//add additional file types with commas, e.g. '*.{html,css,java}'
+  public static final String DELIMITER = "<title>(.*?)</title>"; //used to check for <title> tag when parsing
+  public static final String USER_DIR = "/Users/Atharva/Documents/test walker";//specifies directory to update files in (and all sub-directories within)
   public static final String SIGNIFIER = "<!--MCPT-->";//signifies whether file should be updated
-  public static List <String> BEGIN_HTML_CONTENTS, END_HTML_CONTENTS;
+  public static List <String> HEAD_HTML_CONTENTS, TAIL_HTML_CONTENTS;
+  public static final String HEAD_HTML = "head.html", TAIL_HTML = "tail.html";
   
   public static boolean DEBUG = false;//set to true when debugging
   
-  /* Replaces everything between the start of the file to the <main> tag with the contents of 'begin.html', and
-   * replaces everything between </main> and the end of the file with the contents of 'end.html'.
+  public static final Pattern TITLE_FINDER = Pattern.compile (DELIMITER);//used to check for <title> tag when parsing
+  
+  /* Replaces everything between the start of the file to the <main> tag with the contents of 'HEAD.html', and
+   * replaces everything between </main> and the TAIL of the file with the contents of 'TAIL.html'.
    *
-   * (Only happens if first line of file is <!--MCPT--> AND the file is not 'begin.html' or 'end.html')
+   * (Only happens if first line of file is <!--MCPT--> AND the file is not 'HEAD.html' or 'TAIL.html')
    */
   
   public static void update (Path p) {
-    if (!p.getFileName ().equals ("head.html") && !p.getFileName ().equals ("tail.html")) {
+    if (!p.getFileName ().equals (HEAD_HTML) && !p.getFileName ().equals (TAIL_HTML)) {
       try (BufferedReader in = new BufferedReader (new FileReader (p.toFile ()))) {
         String firstLine = in.readLine ();
         
@@ -26,21 +31,46 @@ public class SnippetUpdater {
           in.close ();
           List <String> text = readAllLines (p);
           
+          String titleField = null;
+          Matcher matcher;
+          
+          for (int i = 0; i < text.size (); i++) {
+             matcher = TITLE_FINDER.matcher (text.get (i));
+              
+             if (matcher.find ()) {
+               titleField = matcher.group (1);
+               break;
+            }
+          }
+          
           PrintWriter out = new PrintWriter (new FileWriter (p.toFile ()));
           
-          //Prints signifier, and contents of begin.html as well as <main> tag at the end
+          //Prints signifier, and contents of HEAD.html as well as <main> tag at the TAIL
           out.println (SIGNIFIER);
           
           if (DEBUG) {
-            for (String i : BEGIN_HTML_CONTENTS) {
+            for (String i : HEAD_HTML_CONTENTS) {
               System.out.println (i);
             }
           }
           
-          for (int i = 0; i < BEGIN_HTML_CONTENTS.size (); i++) {
-            out.print (BEGIN_HTML_CONTENTS.get (i));
+          for (int i = 0; i < HEAD_HTML_CONTENTS.size (); i++) {
             
-            if (i != BEGIN_HTML_CONTENTS.size () - 1) {
+            matcher = TITLE_FINDER.matcher (HEAD_HTML_CONTENTS.get (i));
+            
+            if (matcher.find ()) {
+              String newLine = HEAD_HTML_CONTENTS.get (i).replaceAll (DELIMITER, "<title>" + titleField + "</title>");
+              HEAD_HTML_CONTENTS.set (i, newLine);
+              
+              if (DEBUG) {
+                System.out.println ("KEEP ORIGINAL <TITLE> [new <title> found in head.html]: " + newLine);
+              }
+            }
+            
+            out.print (HEAD_HTML_CONTENTS.get (i));
+            
+            //is this right? should it not be on a new line
+            if (i != HEAD_HTML_CONTENTS.size () - 1) {
               out.println ();
             }
           }
@@ -64,8 +94,20 @@ public class SnippetUpdater {
             }
           }
           
-          for (String i : END_HTML_CONTENTS) {
-            out.println (i);
+          for (int i = 0; i < TAIL_HTML_CONTENTS.size (); i++) {
+            
+            matcher = TITLE_FINDER.matcher (TAIL_HTML_CONTENTS.get (i));
+            
+            if (matcher.find ()) {
+              String newLine = TAIL_HTML_CONTENTS.get (i).replaceAll (DELIMITER, "<title>" + titleField + "</title>");
+              TAIL_HTML_CONTENTS.set (i, newLine);
+              
+              if (DEBUG) {
+                System.out.println ("KEEP ORIGINAL <TITLE> [new <title> found in tail.html]: " + newLine);
+              }
+            }
+            
+            out.println (TAIL_HTML_CONTENTS.get (i));
           }
           
           out.close ();
@@ -98,11 +140,11 @@ public class SnippetUpdater {
             if (!Files.isDirectory (p)) {
               paths.add (p);
               
-              if (p.getFileName ().toString ().equals ("head.html")) {
-                BEGIN_HTML_CONTENTS = readAllLines (p);
+              if (p.getFileName ().toString ().equals (HEAD_HTML)) {
+                HEAD_HTML_CONTENTS = readAllLines (p);
               }
-              else if (p.getFileName ().toString ().equals ("tail.html")) {
-                END_HTML_CONTENTS = readAllLines (p);
+              else if (p.getFileName ().toString ().equals (TAIL_HTML)) {
+                TAIL_HTML_CONTENTS = readAllLines (p);
               }
             }
             else {
@@ -143,8 +185,8 @@ public class SnippetUpdater {
     List <Path> paths = getSourcePaths (Paths.get (USER_DIR));
     
     if (DEBUG) {
-      System.out.println (BEGIN_HTML_CONTENTS);
-      System.out.println (END_HTML_CONTENTS);
+      System.out.println (HEAD_HTML_CONTENTS);
+      System.out.println (TAIL_HTML_CONTENTS);
     }
     
     for (Path p : paths) {
