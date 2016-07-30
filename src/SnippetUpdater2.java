@@ -5,15 +5,15 @@ import java.io.*;
 
 public class SnippetUpdater2 {
   
-  public static final String USER_DIR = "/Users/Atharva/Documents/test";//specifies directory to update files in (and all sub-directories within)
+  public static final String USER_DIR = "/Users/Atharva/Documents/site-test";//specifies directory to update files in (and all sub-directories within)
   public static final String SIGNIFIER = "<!--MCPT-->";//signifies whether file should be updated
   
-  public static final String MAIN_START_DELIMITER = "(.*?)<main>(.*?)"; //used to check for <main> when parsing
-  public static final String MAIN_END_DELIMITER = "(.*?)</main>(.*?)"; //used to check for </main> when parsing
+  public static final String MAIN_START_DELIMITER = "( *?)<main>( *?)"; //used to check for <main> when parsing
+  public static final String MAIN_END_DELIMITER = "( *?)</main>( *?)"; //used to check for </main> when parsing
   
-  public static final String CONTAINER_START_DELIMITER = "(.*?)<div class=\"container\">(.*?)";
-  public static final String DIV_CLASS_END_DELIMITER = "(.*?)</div>(.*?)";
-  public static final String DIV_CLASS_START_DELIMITER = "(.*?)<div class=\"(.*?)\">(.*?)";
+  public static final String CONTAINER_START_DELIMITER = "( *?)<div class=\"container\">( *?)";
+  public static final String DIV_CLASS_END_DELIMITER = "( *?)</div>( *?)";
+  public static final String DIV_CLASS_START_DELIMITER = "( *?)<div class=\"(.*?)\">( *?)";
   
   public static final Pattern MAIN_START_FINDER = Pattern.compile (MAIN_START_DELIMITER);
   public static final Pattern MAIN_END_FINDER = Pattern.compile (MAIN_END_DELIMITER);
@@ -46,8 +46,10 @@ public class SnippetUpdater2 {
       throw new IllegalArgumentException ("<main> not completed in " + p);
     }
     
-    System.out.println ("MAIN");
-    System.out.println (range [0] + " " + range [1]);
+    if (DEBUG) {
+      System.out.println ("MAIN");
+      System.out.println (range [0] + " " + range [1]);
+    }
     
     return range;
   }
@@ -66,11 +68,18 @@ public class SnippetUpdater2 {
           stack = 1;
         }
       }
-      else if (ranges.get (ranges.size () - 1) [1] == -1) {
-        if (DIV_CLASS_START_FINDER.matcher (text.get (i)).find ()) {
+      else if (ranges.get (ranges.size () - 1) [1] == -1) {        
+        if (DIV_CLASS_START_FINDER.matcher (text.get (i)).find () && !text.get (i).contains ("</div")) {
+          if (DEBUG) {
+            System.out.println ((i + 1) + " " + text.get (i) + " ++");
+          }
+          
           stack++;
         }
         else if (DIV_CLASS_END_FINDER.matcher (text.get (i)).find ()) {
+          if (DEBUG) {
+            System.out.println ((i + 1) + " " + text.get (i) + " --");
+          }
           stack--;
         }
         
@@ -82,16 +91,18 @@ public class SnippetUpdater2 {
       }
     }
     
+    if (DEBUG) {
+      System.out.println ("CONTAINER");
+      for (int [] r : ranges) {
+        System.out.println (r [0] + " " + r [1]);
+      }
+    }
+    
     if (ranges.get (last_index) [0] == -1) {
       ranges.remove (last_index);
     }
     else if (ranges.get (last_index) [1] == -1) {//problem, tag is not completed...
       throw new IllegalArgumentException ("<div class=\"container\" not completed in " + p);
-    }
-    
-    System.out.println ("CONTAINER");
-    for (int [] r : ranges) {
-      System.out.println (r [0] + " " + r [1]);
     }
     
     return ranges;
@@ -108,9 +119,11 @@ public class SnippetUpdater2 {
         List <int []> ranges = rangeContainer (text, p);
         ranges.add (rangeMain (text, p));
         
-        System.out.println ("Everything");
-        for (int [] r : ranges) {
-          System.out.println (r [0] + " " + r [1]);
+        if (DEBUG) {
+          System.out.println ("Everything");
+          for (int [] r : ranges) {
+            System.out.println (r [0] + " " + r [1]);
+          }
         }
         
         Collections.sort (ranges, new Comparator <int []> () {
@@ -123,9 +136,11 @@ public class SnippetUpdater2 {
           ranges.remove (0);
         }
         
-        System.out.println ("final");
-        for (int [] r : ranges) {
-          System.out.println (r [0] + " " + r [1]);
+        if (DEBUG) {
+          System.out.println ("final");
+          for (int [] r : ranges) {
+            System.out.println (r [0] + " " + r [1]);
+          }
         }
         
         PrintWriter out = new PrintWriter (new FileWriter (p.toFile ()));
