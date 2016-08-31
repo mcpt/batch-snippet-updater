@@ -5,7 +5,7 @@ import java.io.*;
 
 public class SnippetUpdater2 {
   
-  public static final String USER_DIR = "/Users/Atharva/Documents/site-test";//specifies directory to update files in (and all sub-directories within)
+  public static final String USER_DIR = "/Users/Atharva/Documents/Github/site";//specifies directory to update files in (and all sub-directories within)
   public static final String SIGNIFIER = "<!--MCPT-->";//signifies whether file should be updated
   
   public static final String MAIN_START_DELIMITER = "( *?)<main>( *?)"; //used to check for <main> when parsing
